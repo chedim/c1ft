@@ -46,3 +46,19 @@ write Note:a.n = 2
 restart
 reads Note:a.n = 2
 reads Note:a.twice = 4
+
+test a replay of the journal gives the same entity and the journal holds only outside writes
+PACK two 1
+Alpha.sa getter: 'alpha:' + str(this.n)
+given cls:alpha {"name": "Alpha"}
+given Thing:x {"n": 3}
+write Thing:x.parents = ["cls:alpha"]
+write Thing:x.n = 4
+journal only outside
+journal has born Thing:x
+journal lacks write sa
+row Thing:x lacks sa
+replay
+reads Thing:x.sa = "alpha:4"
+same Thing:x
+same all

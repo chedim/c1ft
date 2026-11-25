@@ -32,6 +32,11 @@ reads Reader:r1.one = 4
 | the `stats` table | `stats on`, `stats getter <Class>.<prop> <field> = <n>` |
 | `Host::feed_val(eid, LinkVal::..)` | `feed <eid> = {json}`, `feed gone`, `feed refused` |
 | `Options::new(Some(path))` and a second `Host::open` of it | `store` and `restart` |
+| `fresh().replay(&h.journal())` and a snapshot compare | `replay`, `same <eid>`, `same all` |
+| `h.journal()` checked line by line | `journal only outside`, `journal lacks write <prop>`, `journal has born <eid>`, `journal has write <eid>.<prop>` |
+| `h.pack_privileged(name)` | `privileged <name> = true\|false` |
+| `h.rows()[eid]["props"]` | `row <eid> has <prop>`, `row <eid> lacks <prop>` |
+| `f.refusals` | `refusals = <n>`, `refusal <n> holds "<text>"` |
 
 `examples/bare_twin/` is cliffvm's `tests/bare_twin_1143.rs` converted: seven tests, one pack file, one `.c1ft` file. It fails the same four tests as the Rust version on the engine that lacks the feature.
 
