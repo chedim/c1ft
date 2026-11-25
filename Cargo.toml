@@ -1,0 +1,20 @@
+[package]
+name = "c1ft"
+version = "0.1.0"
+edition = "2021"
+description = "c1ft: tests written in c1f, run on the cliffvm engine; a result is cached by the content of everything the test reads, so a change reruns only the tests it touches"
+repository = "https://github.com/chedim/c1ft"
+readme = "README.md"
+
+[lib]
+name = "c1ft"
+
+[[bin]]
+name = "c1ft"
+path = "src/main.rs"
+
+[dependencies]
+# the engine, at the pinned release (ENGINE in src/lib.rs says the same; tests/pin.rs keeps the two equal)
+cliffvm = { version = "=0.4.1", default-features = false, features = ["store"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+sha2 = "0.10"

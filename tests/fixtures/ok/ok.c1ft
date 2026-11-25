@@ -1,0 +1,12 @@
+-- test doubles
+PACK p 1
+Thing.twice getter: this.n * 2
+-- given Thing:a {"n": 2}
+-- reads Thing:a.twice = 4
+
+-- test follows a write
+PACK p 1
+Thing.twice getter: this.n * 2
+-- given Thing:a {"n": 2}
+-- write Thing:a.n = 5
+-- reads Thing:a.twice = 10
