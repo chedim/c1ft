@@ -5,7 +5,7 @@ use std::process::Command;
 fn root() -> PathBuf { Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf() }
 
 #[test]
-fn the_bare_twin_example_passes_on_the_pinned_engine() {
+fn the_bare_twin_example_passes() {
     let c = std::env::temp_dir().join(format!("c1ft-ex-{}", std::process::id()));
     let o = Command::new(env!("CARGO_BIN_EXE_c1ft")).args(["run", "--no-cache", "--cache-dir", c.to_str().unwrap(), root().join("examples/bare_twin").to_str().unwrap()]).output().unwrap();
     let t = format!("{}{}", String::from_utf8_lossy(&o.stdout), String::from_utf8_lossy(&o.stderr));
@@ -26,4 +26,13 @@ fn an_example_whose_expectation_is_wrong_fails() {
     assert_eq!(o.status.code(), Some(1), "{t}");
     assert!(t.contains("the bare entity wins when both exist") && t.contains("reads 9, expected 4") && t.contains("6 passed") && t.contains("1 failed"), "{t}");
     let _ = std::fs::remove_dir_all(d);
+}
+
+#[test]
+fn the_eval_example_passes() {
+    let c = std::env::temp_dir().join(format!("c1ft-ex-eval-{}", std::process::id()));
+    let o = Command::new(env!("CARGO_BIN_EXE_c1ft")).args(["run", "--no-cache", "--cache-dir", c.to_str().unwrap(), root().join("examples/eval").to_str().unwrap()]).output().unwrap();
+    let t = format!("{}{}", String::from_utf8_lossy(&o.stdout), String::from_utf8_lossy(&o.stderr));
+    assert!(o.status.success() && t.contains("3 tests: 3 passed"), "{t}");
+    let _ = std::fs::remove_dir_all(c);
 }

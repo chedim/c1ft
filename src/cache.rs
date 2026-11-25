@@ -31,9 +31,21 @@ pub fn inputs(t: &Test, base: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(v)
 }
 
-pub fn key(t: &Test, base: &Path) -> Result<String, String> {
+/// The engine a result was made under: a sha-256 of the running program, which has the engine compiled in. A rebuilt engine (a new release, or the working tree of the engine
+/// under test) is another program, so another key. Read once.
+pub fn engine_id() -> String {
+    static ID: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    ID.get_or_init(|| {
+        let bytes = std::env::current_exe().and_then(std::fs::read).unwrap_or_default();
+        Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect()
+    }).clone()
+}
+
+pub fn key(t: &Test, base: &Path) -> Result<String, String> { key_with(t, base, &engine_id()) }
+
+pub fn key_with(t: &Test, base: &Path, engine: &str) -> Result<String, String> {
     let mut h = Sha256::new();
-    for part in [crate::FORMAT, crate::ENGINE, &t.text] { h.update((part.len() as u64).to_le_bytes()); h.update(part.as_bytes()); }
+    for part in [crate::FORMAT, engine, &t.text] { h.update((part.len() as u64).to_le_bytes()); h.update(part.as_bytes()); }
     for p in inputs(t, base)? {
         let rel = p.strip_prefix(base).unwrap_or(&p).to_string_lossy().to_string();
         let bytes = std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))?;

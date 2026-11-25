@@ -37,3 +37,13 @@ A file is named relative to the first path given. `list` prints `file: name` and
 ## Watch
 
 `watch` runs everything once, then looks at the modification time and size of every `.c1ft` file and every file a test loads, every `--every-ms` milliseconds. When any of them changes, or a `.c1ft` file appears or goes, it runs again. The second run takes every test whose inputs did not change from the cache, so only the tests that read the changed file run ([reactive.md](reactive.md)).
+
+## Testing an engine tree
+
+c1ft runs on the cliffvm it was built with, and the cache key hashes the program, so a different engine never shares a result. To test a working tree of cliffvm (its own tests, written as c1ft), build c1ft against it:
+
+```
+cargo install --path . --force --config 'patch.crates-io.cliffvm.path="/path/to/cliffvm"'
+```
+
+`cargo install --git https://github.com/chedim/c1ft --config ...` does the same from a clone. The tree's version must be inside the range `Cargo.toml` allows (0.4.1 up to, not including, 0.5).
