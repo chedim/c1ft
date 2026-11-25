@@ -1,5 +1,5 @@
 //! The file format (docs/format.md). A file is a list of tests; `-- test <name>` starts one. The lines of a test that are not directives are its pack (c1f text,
-//! `--` comments and all); the directives are `load`, `list`, `given`, `write`, `pump`, `reads`, `eval`, `exists`, `absent` and `error:`.
+//! `--` comments and all); the directives are `load`, `list`, `given`, `write`, `pump`, `reads`, `eval`, `let`, `exists`, `absent` and `error:`.
 use serde_json::Value as J;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,6 +20,8 @@ pub enum Step {
     Absent(String),
     /// `-- eval <expr> = <json>` / `-- eval <expr> = error: <text>`: the expression is evaluated on the engine as the body of a getter
     Eval { expr: String, want: Want },
+    /// `-- let <name> = <expr>`: a variable the evals below it see
+    Let { name: String, expr: String },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -104,6 +106,15 @@ pub fn parse(file: &str, text: &str) -> Result<Vec<Test>, String> {
                 if expr.trim().is_empty() { return Err(bad()); }
                 let want = match v.trim().strip_prefix("error:") { Some(t) => Want::Error(t.trim().into()), None => Want::Value(json(file, n, "eval: the value is not JSON", v)?) };
                 step(Step::Eval { expr: expr.trim().into(), want });
+            }
+            "let" => {
+                let bad = || format!("{file}:{n}: let: `<name> = <expression>`");
+                let (name, expr) = rest.split_once(" = ").ok_or_else(bad)?;
+                let name = name.trim();
+                if name.is_empty() || expr.trim().is_empty() { return Err(bad()); }
+                if !name.chars().next().map_or(false, |c| c.is_ascii_alphabetic() || c == '_') || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') { return Err(format!("{file}:{n}: let: `{name}` is not a name")); }
+                if let Some(Line { line: first, .. }) = t.steps.iter().find(|l| matches!(&l.step, Step::Let { name: m, .. } if m == name)) { return Err(format!("{file}:{n}: let: `{name}` is already a variable of this test (line {first}); a name is let once, as a local is in c1f")); }
+                t.steps.push(Line { line: n, step: Step::Let { name: name.into(), expr: expr.trim().into() } });
             }
             "exists" => step(Step::Exists(rest.trim().into())),
             "absent" => step(Step::Absent(rest.trim().into())),

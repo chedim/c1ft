@@ -52,9 +52,11 @@ pub fn run_test(t: &Test, base: &Path) -> Result<(), String> {
     }
     // every `eval` is a getter of a pack of its own, loaded before the steps run (a refusal is kept for the step that asked)
     let mut refused_eval: std::collections::HashMap<usize, String> = Default::default();
+    let mut lets: Vec<String> = vec![];
     for (i, Line { step, .. }) in t.steps.iter().enumerate() {
+        if let Step::Let { name, expr } = step { lets.push(format!("  {name} = {expr}\n")); }
         if let Step::Eval { expr, .. } = step {
-            let pack = format!("PACK ceval{i} 1\nCeval{i}.val getter: {expr}\nCeval{i}.shown getter: {{'v': this.val, 'why': why(this.val), 'text': str(this.val)}}\n");
+            let pack = format!("PACK ceval{i} 1\nCeval{i}.val getter:\n{}  {expr}\nCeval{i}.shown getter: {{'v': this.val, 'why': why(this.val), 'text': str(this.val)}}\n", lets.concat());
             if let Err(e) = h.load_pack(&format!("ceval{i}"), &pack) { refused_eval.insert(i, e); }
         }
     }
@@ -85,6 +87,7 @@ pub fn run_test(t: &Test, base: &Path) -> Result<(), String> {
                     },
                 }
             }
+            Step::Let { .. } => {}
             Step::Exists(eid) => if !h.exists(eid) { return Err(format!("{here}: {eid} does not exist")); },
             Step::Absent(eid) => if h.exists(eid) { return Err(format!("{here}: {eid} exists")); },
         }
