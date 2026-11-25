@@ -30,7 +30,7 @@ fn a_file_is_a_list_of_named_tests_with_their_pack_loads_and_steps_in_order() {
     assert_eq!(t.line, 3);
     assert!(t.pack.starts_with("PACK p 1\nThing.twice getter: this.n * 2"), "{:?}", t.pack);
     assert_eq!(t.loads, vec![Load::File("lib/helpers.c1f".into()), Load::List { file: "apps/x.packs".into(), dir: "packs".into() }]);
-    let kinds: Vec<&str> = t.steps.iter().map(|s| match &s.step { Step::Given { .. } => "given", Step::Write { .. } => "write", Step::Pump => "pump", Step::Reads { .. } => "reads", Step::Exists(_) => "exists", Step::Absent(_) => "absent" }).collect();
+    let kinds: Vec<&str> = t.steps.iter().map(|s| match &s.step { Step::Given { .. } => "given", Step::Write { .. } => "write", Step::Pump => "pump", Step::Reads { .. } => "reads", Step::Exists(_) => "exists", Step::Absent(_) => "absent", Step::Eval { .. } => "eval" }).collect();
     assert_eq!(kinds, ["given", "write", "pump", "reads", "exists", "absent"]);
     assert!(matches!(&t.steps[0].step, Step::Given { eid, props } if eid == "Thing:a" && *props == json!({"n": 2})));
     assert!(matches!(&t.steps[1].step, Step::Write { eid, prop, value } if eid == "Thing:a" && prop == "n" && *value == json!(5)));

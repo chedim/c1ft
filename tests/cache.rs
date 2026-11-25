@@ -74,3 +74,16 @@ fn an_input_that_is_not_there_is_an_error_that_names_it_not_a_silent_key() {
     assert!(e.contains("packs/missing.c1f"), "{e}");
     let _ = std::fs::remove_dir_all(d);
 }
+
+#[test]
+fn the_engine_is_the_program_itself_so_a_rebuilt_engine_is_another_key() {
+    use c1ft::cache::{engine_id, key_with};
+    let d = dir("e");
+    let ts = parse("t.c1ft", "-- test t\n-- load packs/a.c1f\n").unwrap();
+    let id = engine_id();
+    assert_eq!(id.len(), 64, "a sha-256 of the running program: {id}");
+    assert_eq!(id, engine_id(), "read once");
+    assert_eq!(key(&ts[0], &d).unwrap(), key_with(&ts[0], &d, &id).unwrap());
+    assert_ne!(key_with(&ts[0], &d, &id).unwrap(), key_with(&ts[0], &d, "another engine").unwrap());
+    let _ = std::fs::remove_dir_all(d);
+}

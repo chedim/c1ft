@@ -2,7 +2,7 @@
 
 ## The key
 
-A test's key is a sha-256 over, in order: the format version (`FORMAT`), the engine release (`ENGINE`), the test's own lines, and, for every file the test loads, its path (relative to the test's folder) and its bytes. A `load` of a folder takes every file under it, a `list` takes the list file and every pack it names.
+A test's key is a sha-256 over, in order: the format version (`FORMAT`), the engine (a sha-256 of the running program, which has the engine compiled in: a new release, or a rebuilt working tree of the engine, is another key), the test's own lines, and, for every file the test loads, its path (relative to the test's folder) and its bytes. A `load` of a folder takes every file under it, a `list` takes the list file and every pack it names.
 
 So the same key means the same inputs: the same test text, the same engine, the same packs. A pass found under a key is a pass for exactly those inputs.
 

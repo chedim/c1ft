@@ -1,5 +1,5 @@
 //! The file format (docs/format.md). A file is a list of tests; `-- test <name>` starts one. The lines of a test that are not directives are its pack (c1f text,
-//! `--` comments and all); the directives are `load`, `list`, `given`, `write`, `pump`, `reads`, `exists`, `absent` and `error:`.
+//! `--` comments and all); the directives are `load`, `list`, `given`, `write`, `pump`, `reads`, `eval`, `exists`, `absent` and `error:`.
 use serde_json::Value as J;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -18,6 +18,15 @@ pub enum Step {
     Reads { eid: String, prop: String, want: J },
     Exists(String),
     Absent(String),
+    /// `-- eval <expr> = <json>` / `-- eval <expr> = error: <text>`: the expression is evaluated on the engine as the body of a getter
+    Eval { expr: String, want: Want },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Want {
+    Value(J),
+    /// the expression fails (the loader refuses it, or its value is an error, or a null with a reason) and the message holds the text
+    Error(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -89,6 +98,13 @@ pub fn parse(file: &str, text: &str) -> Result<Vec<Test>, String> {
             "write" => { let (eid, prop, v) = target(file, n, "write", rest, true)?; step(Step::Write { eid, prop, value: v.unwrap() }); }
             "pump" => step(Step::Pump),
             "reads" => { let (eid, prop, v) = target(file, n, "reads", rest, true)?; step(Step::Reads { eid, prop, want: v.unwrap() }); }
+            "eval" => {
+                let bad = || format!("{file}:{n}: eval: `<expression> = <json>` (or `= error: <text>`)");
+                let (expr, v) = rest.split_once(" = ").ok_or_else(bad)?;
+                if expr.trim().is_empty() { return Err(bad()); }
+                let want = match v.trim().strip_prefix("error:") { Some(t) => Want::Error(t.trim().into()), None => Want::Value(json(file, n, "eval: the value is not JSON", v)?) };
+                step(Step::Eval { expr: expr.trim().into(), want });
+            }
             "exists" => step(Step::Exists(rest.trim().into())),
             "absent" => step(Step::Absent(rest.trim().into())),
             _ => {
