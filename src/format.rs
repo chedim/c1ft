@@ -64,12 +64,22 @@ fn target(file: &str, n: usize, word: &str, rest: &str, with_value: bool) -> Res
     Ok((e.to_string(), p.to_string(), v))
 }
 
+/// The words that make a line a directive. A line is a directive when it starts with one at column 0, or with `-- ` and then one: `given Thing:a {}` and `-- given Thing:a {}` are the same.
+const KEYWORDS: [&str; 12] = ["test", "load", "list", "given", "write", "pump", "reads", "eval", "let", "exists", "absent", "error:"];
+
+/// `Some(<the line without its `-- `>)` when the line is a directive, None when it is the test's pack or a comment
+fn directive(line: &str) -> Option<&str> {
+    let d = line.strip_prefix("-- ").unwrap_or(line);
+    let w = d.split_whitespace().next().unwrap_or("");
+    if KEYWORDS.contains(&w) || w.starts_with("error:") { Some(d) } else { None }
+}
+
 pub fn parse(file: &str, text: &str) -> Result<Vec<Test>, String> {
     let mut out: Vec<Test> = vec![];
     for (i, raw) in text.lines().enumerate() {
         let n = i + 1;
         let line = raw.trim_end();
-        if let Some(rest) = line.strip_prefix("-- test") {
+        if let Some(rest) = directive(line).and_then(|d| d.strip_prefix("test")) {
             if rest.is_empty() || rest.starts_with(' ') {
                 let name = rest.trim();
                 if name.is_empty() { return Err(format!("{file}:{n}: test: a name")); }
@@ -83,7 +93,7 @@ pub fn parse(file: &str, text: &str) -> Result<Vec<Test>, String> {
             return Err(format!("{file}:{n}: a line outside a test: {line}"));
         };
         t.text.push_str(raw); t.text.push('\n');
-        let Some(d) = line.strip_prefix("-- ") else { t.pack.push_str(raw); t.pack.push('\n'); continue };
+        let Some(d) = directive(line) else { t.pack.push_str(raw); t.pack.push('\n'); continue };
         let (word, rest) = d.split_once(' ').map(|(w, r)| (w, r)).unwrap_or((d, ""));
         let mut step = |s: Step| t.steps.push(Line { line: n, step: s });
         match word {

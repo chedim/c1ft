@@ -19,7 +19,7 @@ fn an_example_whose_expectation_is_wrong_fails() {
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     std::fs::copy(root().join("examples/bare_twin/bt.c1f"), d.join("bt.c1f")).unwrap();
-    let text = std::fs::read_to_string(root().join("examples/bare_twin/bare_twin.c1ft")).unwrap().replace("-- reads Reader:r3.one = 9", "-- reads Reader:r3.one = 4");
+    let text = std::fs::read_to_string(root().join("examples/bare_twin/bare_twin.c1ft")).unwrap().replace("reads Reader:r3.one = 9", "reads Reader:r3.one = 4");
     std::fs::write(d.join("bare_twin.c1ft"), text).unwrap();
     let o = Command::new(env!("CARGO_BIN_EXE_c1ft")).args(["run", "--no-cache", "--cache-dir", d.join("cache").to_str().unwrap(), d.to_str().unwrap()]).output().unwrap();
     let t = format!("{}{}", String::from_utf8_lossy(&o.stdout), String::from_utf8_lossy(&o.stderr));

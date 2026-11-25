@@ -1,17 +1,17 @@
 -- Expressions on the engine, one line each: the value, or the failure and a text its reason holds.
 
--- test values
--- eval 1 + 2 = 3
--- eval keys({'b': 1, 'a': 2}) = ["b", "a"]
--- eval [x * 2 for x in [1, 2, 3]] = [2, 4, 6]
+test values
+eval 1 + 2 = 3
+eval keys({'b': 1, 'a': 2}) = ["b", "a"]
+eval [x * 2 for x in [1, 2, 3]] = [2, 4, 6]
 
--- test entities the test has given
--- given Command:x {"status": "ok", "rc": 0}
--- given Command:y {"status": "bad"}
--- eval ${['Command:x', 'Command:y']}['status'] = ["ok", "bad"]
--- write Command:x.rc = 7
--- eval Command:x.rc = 7
+test entities the test has given
+given Command:x {"status": "ok", "rc": 0}
+given Command:y {"status": "bad"}
+eval ${['Command:x', 'Command:y']}['status'] = ["ok", "bad"]
+write Command:x.rc = 7
+eval Command:x.rc = 7
 
--- test failures
--- eval keys([1, 2]) = error: keys
--- eval ${['Command:x', 3]}['status'] = error: item 1
+test failures
+eval keys([1, 2]) = error: keys
+eval ${['Command:x', 3]}['status'] = error: item 1
