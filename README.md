@@ -5,13 +5,13 @@ Tests written in c1f, run on the [cliffvm](https://github.com/chedim/cliffvm) en
 A test file is plain text: a pack (the c1f under test), some entities, writes and the values they must read. `c1ft` loads each test into a fresh engine, runs the steps, and keeps a pass under a key made of everything the test reads, so a change reruns only the tests it touches.
 
 ```
--- test a write changes what a getter reads
+test a write changes what a getter reads
 PACK p 1
 Thing.twice getter: this.n * 2
--- given Thing:a {"n": 2}
--- reads Thing:a.twice = 4
--- write Thing:a.n = 5
--- reads Thing:a.twice = 10
+given Thing:a {"n": 2}
+reads Thing:a.twice = 4
+write Thing:a.n = 5
+reads Thing:a.twice = 10
 ```
 
 ```

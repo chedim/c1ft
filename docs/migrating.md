@@ -10,22 +10,22 @@ assert_eq!(h.get("Reader:r1", "one"), json!(4));
 ```
 
 ```
--- test ...
--- load bt.c1f
--- given Reader:r1 {"target": "Thing:t1"}
--- reads Reader:r1.one = 4
+test ...
+load bt.c1f
+given Reader:r1 {"target": "Thing:t1"}
+reads Reader:r1.one = 4
 ```
 
 | Rust | c1ft |
 |---|---|
 | `h.load_pack(name, text)` of the test's own pack | the pack text as lines of the test |
-| `h.load_app(path, trusted)` | `-- load <path>` (never trusted) or `-- list` (the first pack trusted) |
-| `h.born(eid, cls, props, "person")` | `-- given <eid> <props>` |
-| `h.write(eid, prop, v, "person")` | `-- write <eid>.<prop> = <v>` |
-| `h.pump()` | `-- pump` (given and write pump already) |
-| `assert_eq!(h.get(eid, prop), v)` | `-- reads <eid>.<prop> = <v>` |
-| `h.exists(eid)` | `-- exists <eid>` / `-- absent <eid>` |
-| a loader `Err` the test expects | `-- error: <text>` |
+| `h.load_app(path, trusted)` | `load <path>` (never trusted) or `list` (the first pack trusted) |
+| `h.born(eid, cls, props, "person")` | `given <eid> <props>` |
+| `h.write(eid, prop, v, "person")` | `write <eid>.<prop> = <v>` |
+| `h.pump()` | `pump` (given and write pump already) |
+| `assert_eq!(h.get(eid, prop), v)` | `reads <eid>.<prop> = <v>` |
+| `h.exists(eid)` | `exists <eid>` / `absent <eid>` |
+| a loader `Err` the test expects | `error: <text>` |
 
 `examples/bare_twin/` is cliffvm's `tests/bare_twin_1143.rs` converted: seven tests, one pack file, one `.c1ft` file. It fails the same four tests as the Rust version on the engine that lacks the feature.
 
