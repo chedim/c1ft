@@ -1,0 +1,48 @@
+-- Directives that say something about the engine itself: the static type of an expression, the step budget, the evaluation counters, a peer's value fed in, and a restart on a store.
+
+test the static type of an expression and what the checker finds
+type Int(x) with x: Text = "Int|Error"
+type Int(x) with x: Int = "Int"
+findings Voice(kind: 1 + 'a') = 1
+
+test a budget stops an evaluation that takes more steps than it
+budget 3
+eval 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 = error: budget
+budget off
+eval 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 = 36
+
+test the engine counts the evaluations of a getter and a setter
+PACK sa 1
+StatsA.dbl getter: this.w * 2
+StatsA.w on-setter copy:
+  ALWAYS:
+    this.z = this.w + 1
+stats on
+given StatsA:a {"w": 1}
+write StatsA:a.w = 10
+write StatsA:a.w = 11
+stats getter StatsA.dbl calls >= 3
+stats setter StatsA.w calls = 2
+stats off
+
+test a foreign read is pending until the peer says something
+ns p1
+PACK t 1
+Light.c getter: why(membrane::Setting:t.val).cls
+Light.v getter: membrane::Setting:t.val
+given Light:a {}
+reads Light:a.c = "Pending"
+feed membrane::Setting:t = {"val": 4}
+reads Light:a.v = 4
+feed gone membrane::Setting:t
+reads Light:a.c = "Absent"
+
+test what was written is still there after a restart
+store
+PACK t 1
+Note.twice getter: this.n * 2
+given Note:a {"n": 1}
+write Note:a.n = 2
+restart
+reads Note:a.n = 2
+reads Note:a.twice = 4

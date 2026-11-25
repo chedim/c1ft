@@ -26,13 +26,19 @@ reads Reader:r1.one = 4
 | `assert_eq!(h.get(eid, prop), v)` | `reads <eid>.<prop> = <v>` |
 | `h.exists(eid)` | `exists <eid>` / `absent <eid>` |
 | a loader `Err` the test expects | `error: <text>` |
+| `infer_src(src, vars)` and its findings | `type <expr> with <vars> = "<type>"`, `findings <expr> with <vars> = <n>` |
+| `expr::set_eval_budget(Some(n))` | `budget <n>` |
+| `expr::set_clock(Some(fake))` | `clock step <ms>` |
+| the `stats` table | `stats on`, `stats getter <Class>.<prop> <field> = <n>` |
+| `Host::feed_val(eid, LinkVal::..)` | `feed <eid> = {json}`, `feed gone`, `feed refused` |
+| `Options::new(Some(path))` and a second `Host::open` of it | `store` and `restart` |
 
 `examples/bare_twin/` is cliffvm's `tests/bare_twin_1143.rs` converted: seven tests, one pack file, one `.c1ft` file. It fails the same four tests as the Rust version on the engine that lacks the feature.
 
 ## What stays Rust, or waits
 
 - Tests that start `cliffvm serve` or any process, talk over a socket, or use a fake CLI (about half of babyseat's seat tests): [reactive.md](reactive.md#not-built).
-- Tests that need the store, a clock, effects, or the wasm engine.
+- Tests that need effects, a second process, or the wasm engine.
 - Tests of the host's own Rust code (`cliffvm`'s drivers, loaders and CLI).
 - A few Rust tests of the engine itself should stay as a check that does not depend on the engine being right: a test written in c1f runs on the engine it tests.
 

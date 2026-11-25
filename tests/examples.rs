@@ -36,3 +36,12 @@ fn the_eval_example_passes() {
     assert!(o.status.success() && t.contains("3 tests: 3 passed"), "{t}");
     let _ = std::fs::remove_dir_all(c);
 }
+
+#[test]
+fn the_engine_example_passes() {
+    let c = std::env::temp_dir().join(format!("c1ft-ex-engine-{}", std::process::id()));
+    let o = Command::new(env!("CARGO_BIN_EXE_c1ft")).args(["run", "--no-cache", "--cache-dir", c.to_str().unwrap(), root().join("examples/engine").to_str().unwrap()]).output().unwrap();
+    let t = format!("{}{}", String::from_utf8_lossy(&o.stdout), String::from_utf8_lossy(&o.stderr));
+    assert!(o.status.success() && t.contains("5 tests: 5 passed"), "{t}");
+    let _ = std::fs::remove_dir_all(c);
+}

@@ -20,6 +20,16 @@ Each test runs on a fresh engine: no store, no effects, no other test's entities
 | `pump` | settle (the two above already do) |
 | `reads <eid>.<prop> = <json>` | the property must read this value |
 | `let <name> = <expr>` | a variable for the `eval`s below it ([let](#let)) |
+| `type <expr> [with <name>: <Type>, ...] = "<type>"` | the static inference's type of an expression ([engine](#the-engine-itself)) |
+| `findings <expr> [with ...] = <n>` | how many problems the static check finds in it |
+| `budget <n>` / `budget off` | the evaluation step budget, from here on |
+| `clock step <ms>` / `clock off` | a fake clock that advances `ms` at every read, from here on |
+| `stats on` / `stats off` | count the engine's evaluations (clears the counters when turned on) |
+| `stats <getter\|setter> <Class>.<prop> <field> (=\|>=\|<=) <n>` | a field of a counter row: `calls`, `ns`, `wait_ns` or `steps` |
+| `ns <name>` | the engine's own namespace (a page's, say): an id under another namespace is foreign |
+| `feed <eid> = {json}` / `feed gone <eid>` / `feed refused <eid> = "<why>"` | what a peer says of a node of its namespace |
+| `store` | run the engine on a store file of the test's own |
+| `restart` | close the engine and open it again on the same store |
 | `eval <expr> = <json>` | the expression, evaluated now on the engine, must give this value ([eval](#eval)) |
 | `eval <expr> = error: <text>` | the expression must fail, and its reason must hold the text |
 | `exists <eid>` / `absent <eid>` | the entity is there / is not |
@@ -44,6 +54,20 @@ eval xs[-1] = 30
 eval len(xs) + d['a'] = 4
 ```
 
+## The engine itself
+
+These say something about the engine, not about a graph.
+
+- **`type`** and **`findings`** ask the static inference (the engine's type checker, the source of `types.json`): `type Int(x) with x: Text = "Int|Error"` says that `Int(x)` has that type when `x` is a `Text`; `findings <expr> = 1` says the checker reports one problem. A type with a comma inside parentheses is one type; `with` separates the variables by a comma outside them.
+- **`budget`** limits the steps of every evaluation from that line on. An evaluation the budget stops keeps a null and says why in the entity's `failed`; an `eval ... = error: <text>` matches that too. `budget off` lifts it.
+- **`clock step <ms>`** replaces the engine's clock with one that advances by `ms` at every read, so what is measured in time (the slow threshold, the `ns` of a counter row) is what the test says. `clock off` puts the real one back.
+- **`stats on`** clears and turns on the engine's evaluation counters; `stats getter Box.fine calls = 1` reads a row. A row is found by its kind (`getter` or `setter`), class and property; a missing row (the stats were off, or nothing ran) is a failure that says so. The counters are one table per process: c1ft runs tests one at a time, and a test that turned them on turns them off when it ends.
+- **`ns`** sets the engine's own namespace (the seat's is `membrane`; a page's is something else). An id under another namespace is foreign: a read of it is pending until a peer says something.
+- **`feed`** plays that in: `feed peer::Thing:a = {"n": 1}` gives the node those properties, `feed gone peer::Thing:a` says it is not there, `feed refused peer::Thing:a = "too large"` says the peer refused it.
+- **`store`** and **`restart`**: with `store` the engine runs on a store file in a folder of the test's own (removed when the test ends). `restart` closes the engine and opens it again on that file: the packs are loaded again, the stored entities are loaded, and the graph settles. Without `store` a restart opens an empty engine.
+
+Budget, clock and stats are put back when the test ends, so they do not reach the next one.
+
 ## What a read compares
 
 `reads` takes the value the engine holds for the property (a getter's value included) and compares it with the JSON. Numbers compare by value (`4` equals `4.0`). A property the entity does not have reads `null`. The reason a null carries (`absent`, `pending`) is not visible here: to test one, write a getter that asks (`why(...) is Absent`) and read the getter.
@@ -66,4 +90,4 @@ A line that is not understood is a parse error that names the file and line, and
 
 ## What a test cannot do
 
-A test runs without effects, so `Command`, `Fetch`, `File` and cron do not run. There is no clock to advance, no store, no second process, and no wasm engine. Tests that need those stay in the host language ([migrating.md](migrating.md)).
+A test runs without effects, so `Command`, `Fetch`, `File` and cron do not run. There is no second process and no wasm engine. Tests that need those stay in the host language ([migrating.md](migrating.md)).
