@@ -17,6 +17,7 @@ Each test runs on a fresh engine: no store, no effects, no other test's entities
 | `-- write <eid>.<prop> = <json>` | write a property, then settle |
 | `-- pump` | settle (the two above already do) |
 | `-- reads <eid>.<prop> = <json>` | the property must read this value |
+| `-- let <name> = <expr>` | a variable for the `eval`s below it ([let](#let)) |
 | `-- eval <expr> = <json>` | the expression, evaluated now on the engine, must give this value ([eval](#eval)) |
 | `-- eval <expr> = error: <text>` | the expression must fail, and its reason must hold the text |
 | `-- exists <eid>` / `-- absent <eid>` | the entity is there / is not |
@@ -29,6 +30,17 @@ The last `.` before ` = ` splits an id from its property. The class of an entity
 `-- eval <expr> = <json>` evaluates a c1f expression as the body of a getter, at that point of the test: after the `given`s and `write`s above it, with the test's pack loaded. The expression is on one line and holds no ` = ` (the first ` = ` ends it). It sees entities by their ids (`Command:x.rc`, `${'Command:x'}['rc']`) and the getters of the test's pack, and nothing else: there are no variables.
 
 `= error: <text>` expects a failure: the loader refuses the expression, or its value is an Error, or a null whose reason says why (`absent`, `pending`). The reason or the printout of the value must hold the text. A value that is no failure fails the step with the value it had.
+
+## let
+
+`-- let <name> = <expr>` binds a variable that every `eval` below it sees (not the ones above). The expression may use an earlier variable, an entity by its id, or `${...}`. A name is let once per test, as a local is in c1f (the loader refuses a second one); another test has its own variables. A variable that fails makes the evals that use it fail with its reason, and a test can expect that (`-- eval bad = error: keys`).
+
+```
+-- let xs = [10, 20, 30]
+-- let d = {'a': 1, 'b': ['x']}
+-- eval xs[-1] = 30
+-- eval len(xs) + d['a'] = 4
+```
 
 ## What a read compares
 

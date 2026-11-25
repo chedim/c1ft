@@ -59,3 +59,40 @@ fn an_eval_wrong_value_in_a_file_fails_the_run_with_its_line() {
     let e = one("-- given Command:x {\"rc\": 0}\n-- eval Command:x.rc = 1\n").unwrap_err();
     assert!(e.contains("t.c1ft:3") && e.contains("Command:x.rc") && e.contains("is 0"), "{e}");
 }
+
+// ---- `-- let <name> = <expr>`: a variable for the evals below it ---------------------------------------------------------------------------------------------------
+
+#[test]
+fn a_let_is_parsed_with_its_name_and_expression() {
+    let ts = parse("t.c1ft", "-- test t\n-- let xs = [10, 20, 30]\n-- eval xs[0] = 10\n").unwrap();
+    assert!(matches!(&ts[0].steps[0].step, Step::Let { name, expr } if name == "xs" && expr == "[10, 20, 30]"));
+    for (text, want) in [("-- let xs\n", "f.c1ft:2: let: `<name> = <expression>`"), ("-- let  = 1\n", "f.c1ft:2: let: `<name> = <expression>`"), ("-- let 9x = 1\n", "f.c1ft:2: let: `9x` is not a name"), ("-- let a b = 1\n", "f.c1ft:2: let: `a b` is not a name")] {
+        let e = parse("f.c1ft", &format!("-- test t\n{text}")).unwrap_err();
+        assert!(e.contains(want), "{text:?}: {e}");
+    }
+}
+
+#[test]
+fn a_variable_is_seen_by_the_evals_below_it_and_not_by_those_above() {
+    one("-- let xs = [10, 20, 30]\n-- let d = {'a': 1, 'b': ['x']}\n-- eval xs[-1] = 30\n-- eval d['b'][0] = \"x\"\n-- eval len(xs) + d['a'] = 4\n").unwrap();
+    let e = one("-- eval xs[0] = 10\n-- let xs = [10]\n").unwrap_err();
+    assert!(e.contains("t.c1ft:2"), "an eval above the let does not see it: {e}");
+}
+
+#[test]
+fn a_name_is_let_once_per_test_as_a_local_is_in_c1f_and_a_let_may_use_an_earlier_one() {
+    one("-- let n = 1\n-- let m = n + 1\n-- eval m = 2\n").unwrap();
+    let e = parse("f.c1ft", "-- test t\n-- let n = 1\n-- eval n = 1\n-- let n = 2\n").unwrap_err();
+    assert!(e.contains("f.c1ft:4") && e.contains("`n`") && e.contains("line 2"), "{e}");
+    parse("f.c1ft", "-- test t\n-- let n = 1\n\n-- test u\n-- let n = 2\n").unwrap();   // another test, another set of variables
+}
+
+#[test]
+fn a_variable_may_hold_an_entity_a_null_or_what_a_given_made() {
+    one("-- given Thing:a {\"n\": 5}\n-- let e = ${'Thing:a'}\n-- let none = None\n-- eval e['n'] = 5\n-- eval none = null\n-- eval none + 1 = error: absent\n").unwrap();
+}
+
+#[test]
+fn a_let_that_fails_makes_the_evals_below_it_fail_with_its_reason() {
+    one("-- let bad = keys([1])\n-- eval bad = error: keys\n").unwrap();
+}
