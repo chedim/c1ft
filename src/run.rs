@@ -1,6 +1,6 @@
 //! Running one test: a fresh engine (no store, no effects), the loads, the test's own pack, then the steps in order. Every directive that changes the graph pumps afterwards,
 //! as the seat does between rounds, so a read sees the settled graph.
-use crate::format::{Feed, Line, Load, Step, Test, Want};
+use crate::format::{Feed, JournalCheck, Line, Load, Step, Test, Want};
 use cliffvm::fields::LinkVal;
 use cliffvm::host::{Host, Options};
 use serde_json::Value as J;
@@ -106,6 +106,7 @@ pub fn run_test(t: &Test, base: &Path) -> Result<(), String> {
     let store_file = dir.as_ref().map(|d| d.0.join("s.sqlite"));
     let (h, mut refused_eval) = match build(t, base, store_file.as_deref(), false) { Built::Ready(h, r) => (h, r), Built::Done(r) => return r };
     let mut h = Some(h);
+    let mut origin: Option<Host> = None;   // the engine a `replay` was made from
     let mut rev = 0.0f64;
     for (i, Line { line, step }) in t.steps.iter().enumerate() {
         let here = at(t, *line);
@@ -166,6 +167,53 @@ pub fn run_test(t: &Test, base: &Path) -> Result<(), String> {
                 rev += 1.0;
                 host.feed_val(eid, match what { Feed::Props(p) => LinkVal::Props(p.clone()), Feed::Gone => LinkVal::Gone, Feed::Refused(w) => LinkVal::Refused(w.clone()) }, rev);
                 host.pump();
+            }
+            Step::Replay => {
+                let journal = host.journal();
+                match build(t, base, None, false) {
+                    Built::Ready(nh, r) => { nh.replay(&journal); nh.pump(); refused_eval = r; origin = h.take(); h = Some(nh); }
+                    Built::Done(r) => return r,
+                }
+            }
+            Step::Same(what) => {
+                let Some(o) = origin.as_ref() else { return Err(format!("{here}: same: there is no replay to compare with (write `replay` first)")); };
+                let (a, b) = (o.snapshot(), host.snapshot());
+                if what == "all" {
+                    if a != b { return Err(format!("{here}: same all: the replayed engine differs from the original ({} entities, {} replayed)", a.len(), b.len())); }
+                } else {
+                    match (a.get(what), b.get(what)) {
+                        (Some(x), Some(y)) if x == y => {}
+                        (Some(x), Some(y)) => return Err(format!("{here}: same {what}: the original holds {x}, the replay {y}")),
+                        (None, _) => return Err(format!("{here}: same {what}: the original has no such entity")),
+                        (_, None) => return Err(format!("{here}: same {what}: the replay has no such entity")),
+                    }
+                }
+            }
+            Step::Journal(check) => {
+                let j = host.journal();
+                match check {
+                    JournalCheck::OnlyOutside => if let Some(l) = j.iter().find(|l| !cliffvm::host::is_outside(l.writer())) { return Err(format!("{here}: journal only outside: a line from {:?} is in it", l.writer())); },
+                    JournalCheck::LacksWrite(p) => if j.iter().any(|l| matches!(l, cliffvm::host::Line::Write { prop, .. } if prop == p)) { return Err(format!("{here}: journal lacks write {p}: a line writes it")); },
+                    JournalCheck::HasBorn(e) => if !j.iter().any(|l| matches!(l, cliffvm::host::Line::Born { eid, .. } if eid == e)) { return Err(format!("{here}: journal has born {e}: no such line ({} lines)", j.len())); },
+                    JournalCheck::HasWrite { eid: e, prop: p } => if !j.iter().any(|l| matches!(l, cliffvm::host::Line::Write { eid, prop, .. } if eid == e && prop == p)) { return Err(format!("{here}: journal has write {e}.{p}: no such line ({} lines)", j.len())); },
+                }
+            }
+            Step::Privileged { pack, want } => { let got = host.pack_privileged(pack); if got != *want { return Err(format!("{here}: the pack {pack} is {}privileged, expected {}", if got { "" } else { "not " }, if *want { "privileged" } else { "not privileged" })); } }
+            Step::Row { eid, prop, has } => {
+                let rows = host.rows();
+                let Some(row) = rows.get(eid) else { return Err(format!("{here}: row {eid}: there is no row for it")); };
+                let holds = row["props"].get(prop).is_some();
+                if holds != *has { return Err(format!("{here}: the row of {eid} {} {prop}, expected it to {}", if holds { "has" } else { "lacks" }, if *has { "have it" } else { "lack it" })); }
+            }
+            Step::Refusals(n) => {
+                let k = host.engine().lock().unwrap_or_else(|e| e.into_inner()).1.refusals.len();
+                if k != *n { return Err(format!("{here}: the engine has {k} refusal(s), expected {n}")); }
+            }
+            Step::Refusal { index, text } => {
+                let g = host.engine().lock().unwrap_or_else(|e| e.into_inner());
+                let Some(r) = g.1.refusals.get(*index) else { return Err(format!("{here}: there is no refusal {index} ({} kept)", g.1.refusals.len())); };
+                let said = r.to_string();
+                if !said.contains(text.as_str()) { return Err(format!("{here}: refusal {index} says {said}, which does not hold {text:?}")); }
             }
             Step::Restart => {
                 drop(h.take());

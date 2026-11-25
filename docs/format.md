@@ -30,6 +30,12 @@ Each test runs on a fresh engine: no store, no effects, no other test's entities
 | `feed <eid> = {json}` / `feed gone <eid>` / `feed refused <eid> = "<why>"` | what a peer says of a node of its namespace |
 | `store` | run the engine on a store file of the test's own |
 | `restart` | close the engine and open it again on the same store |
+| `replay` | a fresh engine with the same packs replays this one's journal; the steps below run on it ([records](#the-engines-records)) |
+| `same <eid>` / `same all` | the entity (every entity) is in the replayed engine what it is in the original |
+| `journal only outside` / `journal lacks write <prop>` / `journal has born <eid>` / `journal has write <eid>.<prop>` | a check of the journal, which holds the outside writes only |
+| `privileged <pack> = true\|false` | the engine's own privilege flag of a pack |
+| `row <eid> has <prop>` / `row <eid> lacks <prop>` | the stored row of an entity |
+| `refusals = <n>` / `refusal <n> holds "<text>"` | how many writes the engine refused, and what the n-th said |
 | `eval <expr> = <json>` | the expression, evaluated now on the engine, must give this value ([eval](#eval)) |
 | `eval <expr> = error: <text>` | the expression must fail, and its reason must hold the text |
 | `exists <eid>` / `absent <eid>` | the entity is there / is not |
@@ -65,6 +71,16 @@ These say something about the engine, not about a graph.
 - **`ns`** sets the engine's own namespace (the seat's is `membrane`; a page's is something else). An id under another namespace is foreign: a read of it is pending until a peer says something.
 - **`feed`** plays that in: `feed peer::Thing:a = {"n": 1}` gives the node those properties, `feed gone peer::Thing:a` says it is not there, `feed refused peer::Thing:a = "too large"` says the peer refused it.
 - **`store`** and **`restart`**: with `store` the engine runs on a store file in a folder of the test's own (removed when the test ends). `restart` closes the engine and opens it again on that file: the packs are loaded again, the stored entities are loaded, and the graph settles. Without `store` a restart opens an empty engine.
+
+## The engine's records
+
+These read what the engine keeps about itself.
+
+- **`replay`** makes a fresh engine (the same packs, rebuilt) that replays the journal of the current one, settles, and becomes the engine the steps below run on; the original is kept. **`same <eid>`** says the entity is identical in the two, **`same all`** says every entity is (an entity a test birthed after the replay is not in the original, so it differs). A `same` with no `replay` before it is a failure that says so. A replay is always in memory, whatever `store` says.
+- **`journal`** checks the journal: `only outside` says every line comes from an outside writer (a person, the door), as the journal holds nothing a setter or getter derived; `lacks write <prop>` says no line writes the property; `has born <eid>` and `has write <eid>.<prop>` say a line does.
+- **`privileged <pack> = true|false`** reads the engine's own flag (what a rule B check consults), which a grant by `write Pack:<name>.privileged = true` sets and a revoke takes back.
+- **`row <eid> has|lacks <prop>`** reads the stored row of the entity: what is stored, never a getter's value.
+- **`refusals = <n>`** counts the writes the engine refused and **`refusal <n> holds "<text>"`** reads what the n-th said (the receipt names the setter and the pack).
 
 Budget, clock and stats are put back when the test ends, so they do not reach the next one.
 

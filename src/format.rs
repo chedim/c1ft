@@ -38,7 +38,24 @@ pub enum Step {
     Feed { eid: String, what: Feed },
     /// `restart`: close the engine and open it again on the same store (no store: on nothing)
     Restart,
+    /// `replay`: a fresh engine (the same packs) that replays this one's journal; the steps below run on it
+    Replay,
+    /// `same <eid>` / `same all`: the entity (every entity) is in the replayed engine what it is in the original
+    Same(String),
+    /// `journal ...`: a check of the journal, which holds the outside writes only
+    Journal(JournalCheck),
+    /// `privileged <pack> = true|false`: the engine's own privilege flag of a pack
+    Privileged { pack: String, want: bool },
+    /// `row <eid> has|lacks <prop>`: the stored row of an entity
+    Row { eid: String, prop: String, has: bool },
+    /// `refusals = <n>`: how many writes the engine has refused
+    Refusals(usize),
+    /// `refusal <n> holds "<text>"`: the n-th refusal the engine kept says this
+    Refusal { index: usize, text: String },
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum JournalCheck { OnlyOutside, LacksWrite(String), HasBorn(String), HasWrite { eid: String, prop: String } }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Feed { Props(serde_json::Map<String, J>), Gone, Refused(String) }
@@ -108,7 +125,7 @@ fn expr_with(file: &str, n: usize, word: &str, left: &str) -> Result<(String, Ve
 }
 
 /// The words that make a line a directive. A line is a directive when it starts with one at column 0, or with `-- ` and then one: `given Thing:a {}` and `-- given Thing:a {}` are the same.
-const KEYWORDS: [&str; 21] = ["test", "load", "list", "given", "write", "pump", "reads", "eval", "let", "exists", "absent", "error:", "type", "findings", "budget", "clock", "stats", "feed", "ns", "store", "restart"];
+const KEYWORDS: [&str; 28] = ["test", "load", "list", "given", "write", "pump", "reads", "eval", "let", "exists", "absent", "error:", "type", "findings", "budget", "clock", "stats", "feed", "ns", "store", "restart", "replay", "same", "journal", "privileged", "row", "refusals", "refusal"];
 
 /// `Some(<the line without its `-- `>)` when the line is a directive, None when it is the test's pack or a comment
 fn directive(line: &str) -> Option<&str> {
@@ -217,6 +234,43 @@ pub fn parse(file: &str, text: &str) -> Result<Vec<Test>, String> {
             "ns" => { if rest.trim().is_empty() { return Err(format!("{file}:{n}: ns: a name")); } t.ns = Some(rest.trim().into()); }
             "store" => t.store = true,
             "restart" => step(Step::Restart),
+            "replay" => step(Step::Replay),
+            "same" => { if rest.trim().is_empty() { return Err(format!("{file}:{n}: same: `<eid>` or `all`")); } step(Step::Same(rest.trim().into())); }
+            "journal" => {
+                let bad = || format!("{file}:{n}: journal: `only outside`, `lacks write <prop>`, `has born <eid>` or `has write <eid>.<prop>`");
+                match rest.trim().split_whitespace().collect::<Vec<_>>()[..] {
+                    ["only", "outside"] => step(Step::Journal(JournalCheck::OnlyOutside)),
+                    ["lacks", "write", prop] => step(Step::Journal(JournalCheck::LacksWrite(prop.into()))),
+                    ["has", "born", eid] => step(Step::Journal(JournalCheck::HasBorn(eid.into()))),
+                    ["has", "write", t] => { let (eid, prop) = t.rsplit_once('.').ok_or_else(bad)?; step(Step::Journal(JournalCheck::HasWrite { eid: eid.into(), prop: prop.into() })); }
+                    _ => return Err(bad()),
+                }
+            }
+            "privileged" => {
+                let bad = || format!("{file}:{n}: privileged: `<pack> = true|false`");
+                let (pack, v) = rest.split_once(" = ").ok_or_else(bad)?;
+                let want = match v.trim() { "true" => true, "false" => false, _ => return Err(bad()) };
+                step(Step::Privileged { pack: pack.trim().into(), want });
+            }
+            "row" => {
+                let bad = || format!("{file}:{n}: row: `<eid> has <prop>` or `<eid> lacks <prop>`");
+                match rest.trim().split_whitespace().collect::<Vec<_>>()[..] {
+                    [eid, "has", prop] => step(Step::Row { eid: eid.into(), prop: prop.into(), has: true }),
+                    [eid, "lacks", prop] => step(Step::Row { eid: eid.into(), prop: prop.into(), has: false }),
+                    _ => return Err(bad()),
+                }
+            }
+            "refusals" => {
+                let v = rest.trim().strip_prefix("= ").ok_or_else(|| format!("{file}:{n}: refusals: `= <n>`"))?;
+                step(Step::Refusals(v.trim().parse().map_err(|_| format!("{file}:{n}: refusals: the count is not a whole number"))?));
+            }
+            "refusal" => {
+                let bad = || format!("{file}:{n}: refusal: `<n> holds \"<text>\"`");
+                let (idx, text) = rest.trim().split_once(" holds ").ok_or_else(bad)?;
+                let index = idx.trim().parse().map_err(|_| bad())?;
+                let text: String = serde_json::from_str(text.trim()).map_err(|_| bad())?;
+                step(Step::Refusal { index, text });
+            }
             "exists" => step(Step::Exists(rest.trim().into())),
             "absent" => step(Step::Absent(rest.trim().into())),
             _ => {
