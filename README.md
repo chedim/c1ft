@@ -40,4 +40,4 @@ c1ft watch --every-ms 500      # run, then run again whenever an input changes
 
 ## Status
 
-0.1.0, not published. The engine is pinned to one cliffvm release (`Cargo.toml`, `src/lib.rs` `ENGINE`, kept equal by `tests/pin.rs`). `cargo test` runs the suite.
+0.1.0, not published. The engine is pinned to one cliffvm release (`Cargo.toml`, `src/lib.rs` `ENGINE`, kept equal by `tests/pin.rs`). `cargo test` runs the suite, and CI runs it on Ubuntu and macOS.

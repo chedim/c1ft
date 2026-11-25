@@ -25,4 +25,4 @@ Only passes. A failure always runs again. Nothing is remembered about a test tha
 - **Recording what a test really reads.** Inputs are what a test declares with `load` and `list`. Recording the files a test opens would need operating-system tracing that wants root on macOS, so it is not used.
 - **Parallel runs.** Tests run one at a time.
 - **A clock, a store, the wasm engine** inside a test.
-- **Release and CI.** There is no workflow yet; `cargo test` is the suite.
+- **Release.** There is no publish workflow. CI (`.github/workflows/test.yml`) runs `cargo test` on Ubuntu and macOS, on every push and pull request.
