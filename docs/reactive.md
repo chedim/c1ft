@@ -24,5 +24,5 @@ Only passes. A failure always runs again. Nothing is remembered about a test tha
 - **Tests that start a process.** The test engine has no effects, so a test that starts a seat, talks HTTP or runs a fake CLI cannot be written in c1ft yet. That needs `Command` and `Fetch` in the test engine, a port and readiness rule, and a teardown that cannot leave a process running; each of those has a constant that is the owner's to set.
 - **Recording what a test really reads.** Inputs are what a test declares with `load` and `list`. Recording the files a test opens would need operating-system tracing that wants root on macOS, so it is not used.
 - **Parallel runs.** Tests run one at a time.
-- **A clock, a store, the wasm engine** inside a test.
+- **The wasm engine** inside a test.
 - **Release.** There is no publish workflow. CI (`.github/workflows/test.yml`) runs `cargo test` on Ubuntu and macOS, on every push and pull request.
