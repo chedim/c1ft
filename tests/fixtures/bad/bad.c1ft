@@ -1,0 +1,11 @@
+-- test passes
+PACK p 1
+Thing.twice getter: this.n * 2
+-- given Thing:a {"n": 2}
+-- reads Thing:a.twice = 4
+
+-- test fails
+PACK p 1
+Thing.twice getter: this.n * 2
+-- given Thing:a {"n": 2}
+-- reads Thing:a.twice = 5
