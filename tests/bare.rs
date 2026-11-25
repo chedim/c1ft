@@ -66,3 +66,10 @@ fn a_bare_line_outside_a_test_and_a_bare_mistake_say_where() {
         assert!(e.contains(want), "{text:?}: {e}");
     }
 }
+
+#[test]
+fn a_bare_let_binds_a_variable_for_the_evals_below_it() {
+    let ts = parse("t.c1ft", "test t\nlet xs = [1, 2]\nlet d = {'a': 3}\neval xs[0] + d['a'] = 4\n").unwrap();
+    assert!(matches!(&ts[0].steps[0].step, Step::Let { name, expr } if name == "xs" && expr == "[1, 2]"));
+    run_test(&ts[0], Path::new(".")).unwrap();
+}
